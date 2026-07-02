@@ -19,6 +19,7 @@ from app.gateway.auth import (
     create_access_token,
 )
 from app.gateway.auth.config import get_auth_config
+from deerflow.config import get_app_config
 from app.gateway.auth.errors import AuthErrorCode, AuthErrorResponse
 from app.gateway.auth.oidc import OIDCError, OIDCService
 from app.gateway.auth.oidc_state import (
@@ -325,7 +326,19 @@ async def register(request: Request, response: Response, body: RegisterRequest):
 
     The first admin is created explicitly through /initialize. This endpoint creates regular users.
     Auto-login by setting the session cookie.
+
+    Returns 403 if ``auth.allow_registration`` is set to ``false`` in config.yaml.
+    SSO/OIDC logins are not affected by this setting.
     """
+    if not get_app_config().auth.allow_registration:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=AuthErrorResponse(
+                code=AuthErrorCode.REGISTRATION_DISABLED,
+                message="User registration is disabled. Contact your administrator.",
+            ).model_dump(),
+        )
+
     try:
         user = await get_local_provider().create_user(email=body.email, password=body.password, system_role="user")
     except ValueError:

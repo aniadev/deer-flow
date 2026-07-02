@@ -1613,6 +1613,9 @@ run_events:
 #   3. Add Web Origin: http://localhost:8001 (or your frontend origin)
 
 # auth:
+#   # Set to false to disable open self-registration via email/password form.
+#   # SSO/OIDC logins are not affected by this setting.
+#   # allow_registration: true
 #   oidc:
 #     enabled: true
 #     # Base URL of the frontend, used for redirects after SSO callback.

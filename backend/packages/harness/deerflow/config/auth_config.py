@@ -71,3 +71,7 @@ class AuthAppConfig(BaseModel):
     """Authentication configuration section for the DeerFlow app config."""
 
     oidc: OIDCAuthConfig = Field(default_factory=OIDCAuthConfig, description="OIDC SSO authentication settings")
+    allow_registration: bool = Field(
+        default=True,
+        description="Allow new users to self-register via the local email/password form. Set to false to disable open registration (SSO/OIDC logins are unaffected).",
+    )

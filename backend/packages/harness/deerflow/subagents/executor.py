@@ -29,6 +29,7 @@ from deerflow.skills.types import Skill
 from deerflow.subagents.config import SubagentConfig, resolve_subagent_model_name
 from deerflow.subagents.step_events import capture_new_step_messages
 from deerflow.subagents.token_collector import SubagentTokenCollector
+from deerflow.trace_context import DEERFLOW_TRACE_METADATA_KEY
 from deerflow.tracing import build_tracing_callbacks, inject_langfuse_metadata
 
 if TYPE_CHECKING:
@@ -294,6 +295,8 @@ class SubagentExecutor:
         oauth_provider: str | None = None,
         oauth_id: str | None = None,
         run_id: str | None = None,
+        channel_user_id: str | None = None,
+        deerflow_trace_id: str | None = None,
     ):
         """Initialize the executor.
 
@@ -316,6 +319,8 @@ class SubagentExecutor:
             oauth_id: Subject id at the external identity provider.
             run_id: Parent run id, so delegated guardrail decisions attribute to
                 the same run as the lead agent.
+            deerflow_trace_id: DeerFlow request-level correlation id propagated
+                from the parent run for Langfuse metadata correlation.
         """
         self.config = config
         self.app_config = app_config
@@ -338,6 +343,11 @@ class SubagentExecutor:
         self.oauth_provider = oauth_provider
         self.oauth_id = oauth_id
         self.run_id = run_id
+        # IM-channel sender identity captured at task_tool dispatch: group
+        # chats share one thread across senders, so delegated bash commands
+        # must export the dispatching turn's id, not none at all.
+        self.channel_user_id = channel_user_id
+        self.deerflow_trace_id = deerflow_trace_id
 
         self._base_tools = _filter_tools(
             tools,
@@ -581,6 +591,7 @@ class SubagentExecutor:
                 assistant_id=assistant_id,
                 model_name=self.model_name,
                 environment=os.environ.get("DEER_FLOW_ENV") or os.environ.get("ENVIRONMENT"),
+                deerflow_trace_id=self.deerflow_trace_id,
             )
 
             context: dict[str, Any] = {}
@@ -598,6 +609,10 @@ class SubagentExecutor:
             context["oauth_provider"] = self.oauth_provider
             context["oauth_id"] = self.oauth_id
             context["run_id"] = self.run_id
+            if self.channel_user_id:
+                context["channel_user_id"] = self.channel_user_id
+            if self.deerflow_trace_id:
+                context[DEERFLOW_TRACE_METADATA_KEY] = self.deerflow_trace_id
             context["is_subagent"] = True
 
             logger.info(f"[trace={self.trace_id}] Subagent {self.config.name} starting async execution with max_turns={self.config.max_turns}")

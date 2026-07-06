@@ -688,6 +688,7 @@ tools:
   #   base_url: http://localhost:3032    # Browserless instance URL (default: :3032; Docker: http://browserless:3000)
   #   # token: $BROWSERLESS_TOKEN        # API token (required for Browserless Cloud; optional for self-hosted)
   #   timeout_s: 30                       # Request timeout in seconds
+  #   # allow_private_addresses: false    # SSRF guard: keep false in production. Set true ONLY for intentional internal targets.
   #   # wait_for_event: "networkidle"    # Wait for a page event before returning (e.g. "load", "networkidle")
   #   # wait_for_timeout_ms: 2000        # Extra wait after page load in milliseconds
   #   # wait_for_selector: "article"     # CSS selector to wait for before returning
@@ -704,6 +705,7 @@ tools:
   #   use: deerflow.community.crawl4ai.tools:web_fetch_tool
   #   base_url: http://localhost:11235   # Crawl4AI server URL (Docker: http://crawl4ai:11235)
   #   timeout: 30                         # Request timeout in seconds
+  #   # allow_private_addresses: false     # SSRF guard: keep false in production. Set true ONLY for intentional internal targets.
   #   # filter: fit                       # Markdown filter: fit (default) | raw | bm25 | llm
   #   # token: $CRAWL4AI_TOKEN            # Bearer token (only if the server has JWT auth enabled)
 
@@ -783,6 +785,7 @@ tools:
   #   use: deerflow.community.fastcrw.tools:web_fetch_tool
   #   # api_key: $CRW_API_KEY
   #   # base_url: https://fastcrw.com/api   # default cloud; set to e.g. http://localhost:3000 for self-host
+  #   # allow_private_addresses: false      # SSRF guard: keep false in production. Set true ONLY for intentional internal targets.
 
   # Image search tool (uses DuckDuckGo)
   # Use this to find reference images before image generation
@@ -1083,7 +1086,32 @@ sandbox:
 #   #   API_KEY: $MY_API_KEY        # Reads from host's MY_API_KEY env var
 #   #   DATABASE_URL: $DATABASE_URL  # Reads from host's DATABASE_URL env var
 
-# Option 3: Provisioner-managed AIO Sandbox (docker-compose-dev)
+# Option 3: BoxLite micro-VM Sandbox
+# Runs each sandbox as a BoxLite micro-VM. Released boxes stay in an in-process
+# warm pool and can be reclaimed by the same user/thread without a cold start.
+# Requires the boxlite runtime and host virtualization support (KVM on Linux,
+# Hypervisor.framework on macOS).
+# sandbox:
+#   use: deerflow.community.boxlite:BoxliteProvider
+#   image: python:3.12-slim
+#
+#   # Optional: Per-box memory and CPU limits.
+#   # memory_mib: 1024
+#   # cpus: 2
+#
+#   # Optional: Maximum active + warm BoxLite VMs per gateway process (default: 3).
+#   # Active boxes are never evicted; only warm-pool boxes are stopped to make room.
+#   # replicas: 3
+#
+#   # Optional: Seconds before an idle warm-pool VM is stopped (default: 600).
+#   # Set to 0 to keep warm VMs until shutdown or replica eviction.
+#   # idle_timeout: 600
+#
+#   # Optional: Environment variables to inject into every command.
+#   # environment:
+#   #   PYTHONUNBUFFERED: "1"
+#
+# Option 4: Provisioner-managed AIO Sandbox (docker-compose-dev)
 # Each sandbox_id gets a dedicated Pod in k3s, managed by the provisioner.
 # Recommended for production or advanced users who want better isolation and scalability.:
 # sandbox:

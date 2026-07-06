@@ -51,6 +51,8 @@ export const enUS: Translations = {
     exportAsJSON: "Export as JSON",
     exportSuccess: "Conversation exported",
     regenerate: "Regenerate",
+    branch: "Branch conversation",
+    showArtifacts: "Show artifacts of this conversation",
   },
 
   // Home
@@ -85,6 +87,27 @@ export const enUS: Translations = {
     citeCount: (count) => `${count} ${count === 1 ? "cite" : "cites"}`,
     copyReference: (title) => `Copy ${title} reference`,
     copiedReference: (title) => `Copied ${title} reference`,
+  },
+
+  // Workspace Changes
+  workspaceChanges: {
+    title: "Workspace changes",
+    editedTitle: (count) => `Edited ${count} ${count === 1 ? "file" : "files"}`,
+    badge: (count, additions, deletions) =>
+      `${count} ${count === 1 ? "file" : "files"} changed +${additions} -${deletions}`,
+    viewChanges: "View changes",
+    created: "Created",
+    modified: "Modified",
+    deleted: "Deleted",
+    openFile: "Open file",
+    loading: "Loading workspace changes...",
+    noChanges: "No workspace changes recorded.",
+    diffUnavailable: "Diff unavailable",
+    binaryUnavailable: "Binary file. Diff unavailable.",
+    largeUnavailable: "Large file. Diff omitted.",
+    sensitiveUnavailable: "Sensitive path. Content hidden.",
+    truncatedUnavailable: "Diff omitted because the change set is too large.",
+    truncatedSummary: "Some changes were truncated.",
   },
 
   // Input Box
@@ -412,6 +435,8 @@ export const enUS: Translations = {
   conversation: {
     noMessages: "No messages yet",
     startConversation: "Start a conversation to see messages here",
+    branchCreated: "Conversation branch created",
+    branchFailed: "Failed to branch conversation.",
   },
 
   // Chats
@@ -420,6 +445,28 @@ export const enUS: Translations = {
     loadMoreToSearch: "Load more to search older conversations",
     loadingMore: "Loading more...",
     loadOlderChats: "Load older chats",
+  },
+
+  // Sidecar
+  sidecar: {
+    title: "Side chat",
+    open: "Open side chat",
+    close: "Close side chat",
+    addToConversation: "Add to conversation",
+    askInSideChat: "Ask in side chat",
+    reference: "Reference",
+    selectedTextFragment: "{count} selected text fragment",
+    selectedTextFragments: "{count} selected text fragments",
+    clearReferences: "Clear selected references",
+    emptyTitle: "Ask a follow-up",
+    emptyDescription: "Ask a follow-up grounded in the referenced text.",
+    placeholder: "Ask a deeper follow-up...",
+    send: "Send",
+    sendFailed: "Failed to send side chat message.",
+    noContext: "No context selected",
+    continuing: "Continue in this side chat",
+    selectionCrossesMessages:
+      "Selection spans multiple messages. Select text within a single reply to quote it.",
   },
 
   // Channels

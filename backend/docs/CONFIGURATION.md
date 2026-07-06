@@ -81,6 +81,8 @@ models:
 
 For OpenAI-compatible gateways (for example Novita or OpenRouter), keep using `langchain_openai:ChatOpenAI` and set `base_url`:
 
+> **Note:** for `langchain_openai:ChatOpenAI` the endpoint override key is `base_url` (not `api_base`). If you write `api_base` it is automatically normalized to `base_url`, and unrecognized keys are logged with a warning at model-build time. Some other model classes (e.g. `PatchedChatDeepSeek`) do use `api_base` — match the key to the class you configured.
+
 ```yaml
 models:
   - name: novita-deepseek-v3.2
@@ -339,6 +341,32 @@ sandbox:
 sandbox:
    use: deerflow.community.aio_sandbox:AioSandboxProvider # Docker-based sandbox
 ```
+
+**BoxLite micro-VM Sandbox** (runs sandbox code in daemonless OCI micro-VMs):
+```yaml
+sandbox:
+   use: deerflow.community.boxlite:BoxliteProvider
+   image: python:3.12-slim
+   memory_mib: 1024                 # optional per-box memory cap
+   cpus: 2                          # optional per-box vCPUs
+   replicas: 3                      # max active + warm VMs per gateway process
+   idle_timeout: 600                # warm VM idle seconds before stop; 0 disables idle reaping
+   environment:
+      PYTHONUNBUFFERED: "1"
+```
+
+Install the optional runtime before selecting this provider:
+
+```bash
+pip install "deerflow-harness[boxlite]"
+```
+
+BoxLite boxes are named from the effective `(user_id, thread_id)` scope and are
+released into an in-process warm pool after each turn. The same user/thread can
+reclaim its warm VM on the next acquire; different threads cannot share a VM.
+`replicas` caps active plus warm VMs. When the cap is reached only warm VMs are
+evicted; active VMs continue and the provider may temporarily exceed the cap if
+all boxes are active.
 
 **Docker Execution with Kubernetes** (runs sandbox code in Kubernetes pods via provisioner service):
 

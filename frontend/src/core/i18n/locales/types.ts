@@ -40,6 +40,8 @@ export interface Translations {
     exportAsJSON: string;
     exportSuccess: string;
     regenerate: string;
+    branch: string;
+    showArtifacts: string;
   };
 
   home: {
@@ -69,6 +71,26 @@ export interface Translations {
     citeCount: (count: number) => string;
     copyReference: (title: string) => string;
     copiedReference: (title: string) => string;
+  };
+
+  // Workspace Changes
+  workspaceChanges: {
+    title: string;
+    editedTitle: (count: number) => string;
+    badge: (count: number, additions: number, deletions: number) => string;
+    viewChanges: string;
+    created: string;
+    modified: string;
+    deleted: string;
+    openFile: string;
+    loading: string;
+    noChanges: string;
+    diffUnavailable: string;
+    binaryUnavailable: string;
+    largeUnavailable: string;
+    sensitiveUnavailable: string;
+    truncatedUnavailable: string;
+    truncatedSummary: string;
   };
 
   // Input Box
@@ -323,6 +345,8 @@ export interface Translations {
   conversation: {
     noMessages: string;
     startConversation: string;
+    branchCreated: string;
+    branchFailed: string;
   };
 
   // Chats
@@ -331,6 +355,27 @@ export interface Translations {
     loadMoreToSearch: string;
     loadingMore: string;
     loadOlderChats: string;
+  };
+
+  // Sidecar
+  sidecar: {
+    title: string;
+    open: string;
+    close: string;
+    addToConversation: string;
+    askInSideChat: string;
+    reference: string;
+    selectedTextFragment: string;
+    selectedTextFragments: string;
+    clearReferences: string;
+    emptyTitle: string;
+    emptyDescription: string;
+    placeholder: string;
+    send: string;
+    sendFailed: string;
+    noContext: string;
+    continuing: string;
+    selectionCrossesMessages: string;
   };
 
   // Channels

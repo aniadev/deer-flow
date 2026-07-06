@@ -1,4 +1,4 @@
-﻿import {
+import {
   CompassIcon,
   GraduationCapIcon,
   ImageIcon,
@@ -51,6 +51,8 @@ export const zhCN: Translations = {
     exportAsJSON: "导出为 JSON",
     exportSuccess: "对话已导出",
     regenerate: "重新生成",
+    branch: "分叉",
+    showArtifacts: "查看此对话的文件",
   },
 
   // Home
@@ -84,6 +86,27 @@ export const zhCN: Translations = {
     citeCount: (count) => `${count} 次引用`,
     copyReference: (title) => `复制 ${title} 引用`,
     copiedReference: (title) => `已复制 ${title} 引用`,
+  },
+
+  // Workspace Changes
+  workspaceChanges: {
+    title: "工作区变更",
+    editedTitle: (count) => `已编辑 ${count} 个文件`,
+    badge: (count, additions, deletions) =>
+      `${count} 个文件已更改 +${additions} -${deletions}`,
+    viewChanges: "查看更改",
+    created: "新增",
+    modified: "修改",
+    deleted: "删除",
+    openFile: "打开文件",
+    loading: "正在加载工作区变更...",
+    noChanges: "没有记录到工作区变更。",
+    diffUnavailable: "无法展示 diff",
+    binaryUnavailable: "二进制文件，无法展示 diff。",
+    largeUnavailable: "文件过大，已省略 diff。",
+    sensitiveUnavailable: "敏感路径，已隐藏内容。",
+    truncatedUnavailable: "变更集过大，已省略 diff。",
+    truncatedSummary: "部分变更已被截断。",
   },
 
   // Input Box
@@ -396,6 +419,8 @@ export const zhCN: Translations = {
   conversation: {
     noMessages: "还没有消息",
     startConversation: "开始新的对话以查看消息",
+    branchCreated: "已创建分叉对话",
+    branchFailed: "创建分叉对话失败。",
   },
 
   // Chats
@@ -404,6 +429,28 @@ export const zhCN: Translations = {
     loadMoreToSearch: "加载更多以搜索更早的对话",
     loadingMore: "正在加载...",
     loadOlderChats: "加载更早的对话",
+  },
+
+  // Sidecar
+  sidecar: {
+    title: "侧边对话",
+    open: "打开侧边对话",
+    close: "关闭侧边对话",
+    addToConversation: "添加到对话",
+    askInSideChat: "在侧边聊天中提问",
+    reference: "引用",
+    selectedTextFragment: "{count} 个已选文本片段",
+    selectedTextFragments: "{count} 个已选文本片段",
+    clearReferences: "清除已选引用",
+    emptyTitle: "继续深入追问",
+    emptyDescription: "基于引用内容单独追问。",
+    placeholder: "继续深入追问...",
+    send: "发送",
+    sendFailed: "侧边对话发送失败。",
+    noContext: "未选择上下文",
+    continuing: "继续当前侧边对话",
+    selectionCrossesMessages:
+      "选区跨越了多条消息，请在同一条回复内选择要引用的文本。",
   },
 
   // Channels

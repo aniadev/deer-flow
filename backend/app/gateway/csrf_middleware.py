@@ -16,6 +16,10 @@ from starlette.types import ASGIApp
 
 from app.gateway.auth.config import get_auth_config
 from app.gateway.auth_disabled import is_auth_disabled
+from app.gateway.internal_auth import (
+    INTERNAL_AUTH_HEADER_NAME,
+    is_valid_internal_auth_token,
+)
 
 CSRF_COOKIE_NAME = "csrf_token"
 CSRF_HEADER_NAME = "X-CSRF-Token"
@@ -42,6 +46,14 @@ def should_check_csrf(request: Request) -> bool:
         return False
 
     if is_auth_disabled():
+        return False
+
+    # Trusted internal service-account callers authenticate via a strong
+    # shared-secret header (X-DeerFlow-Internal-Token), not a browser cookie
+    # session. CSRF's double-submit-cookie defense only protects cookie-auth
+    # sessions from cross-site riding, so it does not apply to header-token
+    # callers — mirror the provider-signature webhook exemption below.
+    if is_valid_internal_auth_token(request.headers.get(INTERNAL_AUTH_HEADER_NAME)):
         return False
 
     path = request.url.path.rstrip("/")

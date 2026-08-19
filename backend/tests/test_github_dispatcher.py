@@ -9,12 +9,13 @@ shape lands on the bus per matching binding.
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 import pytest
 import yaml
 
-from app.channels.message_bus import InboundMessage, MessageBus
+from app.channels.message_bus import InboundMessage, InboundQueueFullError, MessageBus
 from app.gateway.github.dispatcher import fanout_event
 
 
@@ -44,6 +45,77 @@ async def _drain(bus: MessageBus) -> list[InboundMessage]:
     while not bus.inbound_queue.empty():
         out.append(await bus.get_inbound())
     return out
+
+
+@pytest.mark.asyncio
+async def test_fanout_redelivery_progresses_beyond_queue_sized_prefix(base_dir: Path) -> None:
+    """A redelivery must not keep failing on the same queue-sized prefix."""
+    from app.channels.manager import ChannelManager
+    from app.channels.store import ChannelStore
+
+    agent_names = {"alpha", "bravo", "charlie"}
+    for name in agent_names:
+        _write_agent(
+            base_dir,
+            "default",
+            name,
+            {
+                "name": name,
+                "github": {
+                    "bindings": [
+                        {
+                            "repo": "a/b",
+                            "triggers": {"pull_request": {"actions": ["opened"]}},
+                        }
+                    ]
+                },
+            },
+        )
+
+    bus = MessageBus(inbound_queue_maxsize=1)
+    manager = ChannelManager(
+        bus=bus,
+        store=ChannelStore(path=base_dir / "fanout-store.json"),
+        max_concurrency=1,
+    )
+    handled: list[str] = []
+    first_started = asyncio.Event()
+    release_first = asyncio.Event()
+
+    async def handle(msg: InboundMessage) -> None:
+        if not handled:
+            first_started.set()
+            await release_first.wait()
+        handled.append(msg.metadata["agent_name"])
+
+    manager._handle_message = handle  # type: ignore[method-assign]
+    await manager.start()
+    try:
+        payload = {
+            "action": "opened",
+            "pull_request": {"number": 1, "title": "x", "user": {"login": "u"}, "body": ""},
+            "repository": {"full_name": "a/b"},
+            "sender": {"login": "u"},
+        }
+        with pytest.raises(InboundQueueFullError):
+            await fanout_event(bus, "pull_request", "delivery-over-capacity", payload)
+
+        await asyncio.wait_for(first_started.wait(), timeout=1)
+        release_first.set()
+        await asyncio.wait_for(bus.join_inbound(), timeout=1)
+        assert len(handled) == 2
+
+        # The same delivery id republishes the already-admitted prefix, which
+        # the manager dedupe consumes quickly. The scheduling handoff in
+        # publish_inbound lets the worker do that before the next admission,
+        # so the previously starved suffix reaches the queue on this retry.
+        result = await fanout_event(bus, "pull_request", "delivery-over-capacity", payload)
+        await asyncio.wait_for(bus.join_inbound(), timeout=1)
+
+        assert set(result["fired_agents"]) == agent_names
+        assert set(handled) == agent_names
+    finally:
+        await manager.stop()
 
 
 # ---------------------------------------------------------------------------
@@ -1037,7 +1109,7 @@ async def test_coder_and_reviewer_on_same_pr_get_distinct_threads(base_dir: Path
 
 
 # ---------------------------------------------------------------------------
-# Inbound dedupe identity — redelivery / retry-on-timeout protection
+# Inbound dedupe identity — redelivery / replay protection
 # ---------------------------------------------------------------------------
 
 
@@ -1048,8 +1120,9 @@ async def test_delivery_id_populates_inbound_dedupe_identity(base_dir: Path) -> 
     The inbound dedupe added for the IM channels in PR #3584 keys on a
     top-level ``metadata["message_id"]`` plus a workspace id. The GitHub
     channel added later (PR #3754) never populated either, so a redelivered
-    webhook (native "Redeliver" button / retry-on-timeout) re-ran the agent.
-    Fan-out now stamps the ``X-GitHub-Delivery`` GUID (scoped per owning
+    webhook (native "Redeliver" button, REST API, or an operator's own
+    recovery script — GitHub does not auto-retry a failed delivery) re-ran
+    the agent. Fan-out now stamps the ``X-GitHub-Delivery`` GUID (scoped per owning
     user + agent) as the message id and the repo as the workspace id,
     exactly where ``ChannelManager._inbound_dedupe_key`` looks.
     """
@@ -1170,8 +1243,8 @@ async def test_dedupe_identity_distinguishes_same_agent_name_across_users(base_d
     from app.channels.store import ChannelStore
 
     manager = ChannelManager(bus=MessageBus(), store=ChannelStore(path=base_dir / "dedupe-store.json"))
-    assert manager._is_duplicate_inbound(by_owner["alice"]) is False
-    assert manager._is_duplicate_inbound(by_owner["bob"]) is False
+    assert await manager._is_duplicate_inbound(by_owner["alice"]) is False
+    assert await manager._is_duplicate_inbound(by_owner["bob"]) is False
 
 
 @pytest.mark.asyncio
@@ -1181,7 +1254,19 @@ async def test_missing_delivery_header_leaves_dedupe_open(base_dir: Path) -> Non
     ``delivery_id`` originates from an optional header and can be empty. An
     empty value must not become a constant key that would silently drop
     distinct deliveries — it yields no dedupe id, i.e. the pre-fix behavior.
+
+    This asserts the actual manager-level consequence, not just the raw
+    dispatcher-layer id: today ``_inbound_dedupe_key`` returns ``None`` for a
+    falsy ``message_id``, so ``_is_duplicate_inbound`` returns ``False`` and
+    never records a key. A future change that let a missing id fall through
+    as a real (constant) key would silently collapse every header-less
+    delivery into "the same" message; asserting on two separate header-less
+    deliveries pins that neither is ever treated as a duplicate of the other
+    (willem-bd, PR #4104 review).
     """
+    from app.channels.manager import ChannelManager
+    from app.channels.store import ChannelStore
+
     bus = MessageBus()
     _write_agent(base_dir, "default", "reviewer", {"name": "reviewer", "github": {"bindings": [{"repo": "a/b", "triggers": {"pull_request": {"actions": ["opened"]}}}]}})
     payload = {
@@ -1190,9 +1275,17 @@ async def test_missing_delivery_header_leaves_dedupe_open(base_dir: Path) -> Non
         "repository": {"full_name": "a/b"},
         "sender": {"login": "u"},
     }
+    manager = ChannelManager(bus=MessageBus(), store=ChannelStore(path=base_dir / "dedupe-store.json"))
+
     await fanout_event(bus, "pull_request", "", payload)
-    (msg,) = await _drain(bus)
-    assert msg.metadata["message_id"] is None
+    (first,) = await _drain(bus)
+    assert first.metadata["message_id"] is None
+    assert await manager._is_duplicate_inbound(first) is False
+
+    await fanout_event(bus, "pull_request", "", payload)
+    (second,) = await _drain(bus)
+    assert second.metadata["message_id"] is None
+    assert await manager._is_duplicate_inbound(second) is False
 
 
 # ---------------------------------------------------------------------------
